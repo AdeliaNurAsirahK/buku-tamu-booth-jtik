@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buku Tamu Booth — Kendali Cahaya Otomatis Berbasis LDR (JTIK)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --navy: #17376E;
+      --navy-dark: #0F254B;
+      --gold: #F4B41A;
+      --gold-dark: #D99B06;
+    }
+    body {
+      background-color: #F4F6FA;
+      color: #1E293B;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+    .bg-navy { background-color: var(--navy); }
+    .bg-navy-dark { background-color: var(--navy-dark); }
+    .text-navy { color: var(--navy); }
+    .border-navy { border-color: var(--navy); }
+    .bg-gold { background-color: var(--gold); }
+    .hover-bg-gold:hover { background-color: var(--gold-dark); }
+    .text-gold { color: var(--gold); }
+    .sig-canvas {
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .star-btn {
+      transition: transform 0.12s ease, color 0.12s ease;
+    }
+    .star-btn:hover {
+      transform: scale(1.12);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header / Kop Booth -->
+  <header class="bg-navy text-white border-b-4 border-[#F4B41A] shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-start sm:items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-[#F4B41A] text-[#17376E] flex items-center justify-center font-black text-lg shrink-0 shadow">
+          JTIK
+        </div>
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#F4B41A] mb-1">
+            <span>Proyek Sistem Teknik Kendali Digital</span>
+            <span>•</span>
+            <span>Buku Tamu Booth</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold leading-snug">
+            Kendali Cahaya Otomatis Berbasis LDR
+          </h1>
+          <p class="text-xs sm:text-sm text-blue-100 mt-0.5">
+            Arduino Uno R3 • Sensor LDR (Threshold 900) • Relay 1-Channel • Lampu AC 220V
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          id="btnDownloadPdf"
+          class="bg-[#F4B41A] hover:bg-[#D99B06] text-[#17376E] font-bold text-sm px-4 py-2.5 rounded-lg shadow transition flex items-center gap-2 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Download PDF Buku Tamu</span>
+        </button>
+
+        <button
+          type="button"
+          id="btnSeedSample"
+          title="Isi contoh data tamu jika masih kosong"
+          class="bg-navy-dark hover:bg-blue-950 text-blue-100 border border-blue-400/30 text-xs font-medium px-3 py-2.5 rounded-lg transition cursor-pointer"
+        >
+          + Contoh Data
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl w-full mx-auto px-4 py-6 flex-1 space-y-6">
+
+    <!-- Ringkasan Singkat & Statistik -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Pengunjung</p>
+          <p id="statTotal" class="text-3xl font-extrabold text-[#17376E] mt-1">0</p>
+        </div>
+        <div class="w-11 h-11 rounded-lg bg-blue-50 text-[#17376E] flex items-center justify-center font-bold text-lg">
+          👥
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rata-Rata Rating Demo</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <p id="statAvgRating" class="text-3xl font-extrabold text-[#17376E]">0.0</p>
+            <span class="text-sm text-[#F4B41A] font-bold">/ 5.0 ★</span>
+          </div>
+        </div>
+        <div class="w-11 h-11 rounded-lg bg-amber-50 text-[#D99B06] flex items-center justify-center font-bold text-lg">
+          ★
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Logika Sistem Booth</p>
+        <p class="text-sm font-semibold text-[#17376E] mt-1">Analog A0 ≥ 900 → Relay Aktif (Lampu Nyala)</p>
+        <p class="text-xs text-slate-500 mt-0.5">Terang (±558–563) Mati • Gelap (±965–974) Nyala</p>
+      </div>
+    </section>
+
+    <!-- Form & Daftar Tamu -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- Form Buku Tamu (5 Kolom) -->
+      <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-navy px-5 py-3.5 text-white flex items-center justify-between">
+          <h2 class="font-bold text-base">Isi Buku Tamu Booth</h2>
+          <span class="text-[11px] bg-[#F4B41A] text-[#17376E] font-bold px-2.5 py-0.5 rounded-full">Wajib Diisi *</span>
+        </div>
+
+        <form id="guestForm" class="p-5 space-y-4">
+          <div>
+            <label for="nama" class="block text-sm font-semibold text-slate-700 mb-1">
+              Nama Lengkap <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="nama"
+              required
+              placeholder="Contoh: Andi Pratama"
+              class="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#17376E] focus:border-[#17376E]"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="kategori" class="block text-sm font-semibold text-slate-700 mb-1">
+                Kategori <span class="text-red-500">*</span>
+              </label>
+              <select
+                id="kategori"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#17376E] focus:border-[#17376E]"
+              >
+                <option value="Mahasiswa">Mahasiswa</option>
+                <option value="Dosen">Dosen</option>
+                <option value="Umum / Tamu">Umum / Tamu</option>
+                <option value="Panitia">Panitia</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="instansi" class="block text-sm font-semibold text-slate-700 mb-1">
+                NIM / NIP / Instansi <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="instansi"
+                required
+                placeholder="NIM / Prodi / Instansi"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#17376E] focus:border-[#17376E]"
+              />
+            </div>
+          </div>
+
+          <!-- Rating Bintang -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">
+              Rating Demo Prototipe <span class="text-red-500">*</span>
+            </label>
+            <div class="flex items-center gap-1.5" id="starContainer" role="radiogroup" aria-label="Rating 1 sampai 5">
+              <button type="button" data-rating="1" class="star-btn text-2xl text-amber-400 cursor-pointer" aria-label="1 bintang">★</button>
+              <button type="button" data-rating="2" class="star-btn text-2xl text-amber-400 cursor-pointer" aria-label="2 bintang">★</button>
+              <button type="button" data-rating="3" class="star-btn text-2xl text-amber-400 cursor-pointer" aria-label="3 bintang">★</button>
+              <button type="button" data-rating="4" class="star-btn text-2xl text-amber-400 cursor-pointer" aria-label="4 bintang">★</button>
+              <button type="button" data-rating="5" class="star-btn text-2xl text-amber-400 cursor-pointer" aria-label="5 bintang">★</button>
+              <span id="ratingLabel" class="ml-2 text-xs font-semibold text-slate-600">5 / 5 (Sangat Bagus)</span>
+            </div>
+            <input type="hidden" id="ratingValue" value="5" />
+          </div>
+
+          <!-- Komentar / Kesan -->
+          <div>
+            <label for="komentar" class="block text-sm font-semibold text-slate-700 mb-1">
+              Kesan / Saran untuk Proyek
+            </label>
+            <textarea
+              id="komentar"
+              rows="2"
+              placeholder="Tulis kesan, masukan, atau pertanyaan terkait kendali cahaya LDR..."
+              class="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#17376E] focus:border-[#17376E]"
+            ></textarea>
+          </div>
+
+          <!-- Tanda Tangan Digital -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-semibold text-slate-700">
+                Tanda Tangan Digital <span class="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                id="btnClearSig"
+                class="text-xs font-semibold text-red-600 hover:text-red-700 underline cursor-pointer"
+              >
+                Hapus Tanda Tangan
+              </button>
+            </div>
+            <div class="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 overflow-hidden">
+              <canvas id="sigCanvas" width="420" height="140" class="sig-canvas w-full h-[140px] block bg-white"></canvas>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Gunakan jari (layar sentuh) atau mouse untuk menandatangani.</p>
+          </div>
+
+          <div id="formAlert" class="hidden text-xs font-semibold px-3 py-2 rounded-lg"></div>
+
+          <button
+            type="submit"
+            class="w-full bg-[#17376E] hover:bg-[#0F254B] text-white font-bold py-2.5 px-4 rounded-lg shadow transition cursor-pointer"
+          >
+            Simpan ke Buku Tamu
+          </button>
+        </form>
+      </section>
+
+      <!-- Daftar Pengunjung Booth (7 Kolom) -->
+      <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="font-bold text-base text-[#17376E]">Daftar Pengunjung Tercatat</h2>
+            <p class="text-xs text-slate-500">Data tersimpan otomatis di browser (localStorage)</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Cari nama / instansi..."
+              class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#17376E]"
+            />
+            <select
+              id="filterKategori"
+              class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#17376E]"
+            >
+              <option value="ALL">Semua Kategori</option>
+              <option value="Mahasiswa">Mahasiswa</option>
+              <option value="Dosen">Dosen</option>
+              <option value="Umum / Tamu">Umum / Tamu</option>
+              <option value="Panitia">Panitia</option>
+            </select>
+            <button
+              type="button"
+              id="btnResetAll"
+              class="text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+            >
+              Reset Data
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-[#17376E] text-xs uppercase tracking-wider border-b border-slate-200">
+                <th class="py-3 px-3 font-bold">No</th>
+                <th class="py-3 px-3 font-bold">Waktu</th>
+                <th class="py-3 px-3 font-bold">Nama & Kategori</th>
+                <th class="py-3 px-3 font-bold">NIM / Instansi</th>
+                <th class="py-3 px-3 font-bold">Rating</th>
+                <th class="py-3 px-3 font-bold">Kesan / Saran</th>
+                <th class="py-3 px-3 font-bold text-center">TTD</th>
+                <th class="py-3 px-3 font-bold text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="guestTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+              <!-- Diisi via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="emptyState" class="hidden py-12 px-4 text-center">
+          <p class="text-slate-500 font-medium text-sm">Belum ada data pengunjung yang tercatat.</p>
+          <p class="text-xs text-slate-400 mt-1">Isi formulir di sebelah kiri atau klik <strong>+ Contoh Data</strong> untuk menguji export PDF.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-3.5 px-4 text-center text-xs text-slate-500">
+    Buku Tamu Booth Pameran JTIK • Proyek Kendali Cahaya Otomatis Berbasis LDR
+  </footer>
+
+  <script>
+    const STORAGE_KEY = 'jtik_ldr_guestbook_v1';
+
+    let guests = [];
+    let selectedRating = 5;
+    let isDrawing = false;
+    let hasSignature = false;
+
+    const ratingDescriptions = {
+      1: '1 / 5 (Kurang)',
+      2: '2 / 5 (Cukup)',
+      3: '3 / 5 (Baik)',
+      4: '4 / 5 (Sangat Baik)',
+      5: '5 / 5 (Sangat Bagus)'
+    };
+
+    // Elemen DOM
+    const guestForm = document.getElementById('guestForm');
+    const namaInput = document.getElementById('nama');
+    const kategoriInput = document.getElementById('kategori');
+    const instansiInput = document.getElementById('instansi');
+    const komentarInput = document.getElementById('komentar');
+    const ratingValueInput = document.getElementById('ratingValue');
+    const ratingLabel = document.getElementById('ratingLabel');
+    const starButtons = document.querySelectorAll('.star-btn');
+    const formAlert = document.getElementById('formAlert');
+
+    const canvas = document.getElementById('sigCanvas');
+    const ctx = canvas.getContext('2d');
+    const btnClearSig = document.getElementById('btnClearSig');
+
+    const guestTableBody = document.getElementById('guestTableBody');
+    const emptyState = document.getElementById('emptyState');
+    const searchInput = document.getElementById('searchInput');
+    const filterKategori = document.getElementById('filterKategori');
+    const btnResetAll = document.getElementById('btnResetAll');
+    const btnDownloadPdf = document.getElementById('btnDownloadPdf');
+    const btnSeedSample = document.getElementById('btnSeedSample');
+
+    const statTotal = document.getElementById('statTotal');
+    const statAvgRating = document.getElementById('statAvgRating');
+
+    // Konfigurasi Kanvas Tanda Tangan
+    function setupCanvas() {
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#17376E';
+      clearCanvas();
+    }
+
+    function clearCanvas() {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      hasSignature = false;
+    }
+
+    function getCanvasPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function startDrawing(evt) {
+      evt.preventDefault();
+      isDrawing = true;
+      const pos = getCanvasPos(evt);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+
+    function draw(evt) {
+      if (!isDrawing) return;
+      evt.preventDefault();
+      const pos = getCanvasPos(evt);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      hasSignature = true;
+    }
+
+    function stopDrawing(evt) {
+      if (!isDrawing) return;
+      if (evt) evt.preventDefault();
+      isDrawing = false;
+      ctx.closePath();
+    }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDrawing);
+
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    window.addEventListener('touchend', stopDrawing, { passive: false });
+
+    btnClearSig.addEventListener('click', clearCanvas);
+
+    // Rating Bintang
+    function updateStars(val) {
+      selectedRating = Number(val);
+      ratingValueInput.value = selectedRating;
+      ratingLabel.textContent = ratingDescriptions[selectedRating] || `${selectedRating} / 5`;
+
+      starButtons.forEach(btn => {
+        const r = Number(btn.dataset.rating);
+        if (r <= selectedRating) {
+          btn.classList.remove('text-slate-300');
+          btn.classList.add('text-amber-400');
+        } else {
+          btn.classList.remove('text-amber-400');
+          btn.classList.add('text-slate-300');
+        }
+      });
+    }
+
+    starButtons.forEach(btn => {
+      btn.addEventListener('click', () => updateStars(btn.dataset.rating));
+    });
+
+    // Penyimpanan localStorage
+    function loadGuests() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        guests = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(guests)) guests = [];
+      } catch (e) {
+        guests = [];
+      }
+    }
+
+    function saveGuests() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(guests));
+    }
+
+    function showAlert(message, type = 'error') {
+      formAlert.textContent = message;
+      formAlert.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'border', 'border-red-200', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
+      if (type === 'success') {
+        formAlert.classList.add('bg-emerald-50', 'text-emerald-700', 'border', 'border-emerald-200');
+      } else {
+        formAlert.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
+      }
+      setTimeout(() => {
+        formAlert.classList.add('hidden');
+      }, 3500);
+    }
+
+    function formatTimestamp(isoString) {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      return d.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function escapeHtml(str = '') {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Render Statistik & Tabel
+    function renderStats() {
+      statTotal.textContent = guests.length;
+      if (guests.length === 0) {
+        statAvgRating.textContent = '0.0';
+        return;
+      }
+      const sum = guests.reduce((acc, item) => acc + (Number(item.rating) || 0), 0);
+      statAvgRating.textContent = (sum / guests.length).toFixed(1);
+    }
+
+    function renderTable() {
+      renderStats();
+
+      const q = searchInput.value.trim().toLowerCase();
+      const cat = filterKategori.value;
+
+      const filtered = guests.filter(item => {
+        const matchCat = cat === 'ALL' || item.kategori === cat;
+        const matchText =
+          !q ||
+          (item.nama && item.nama.toLowerCase().includes(q)) ||
+          (item.instansi && item.instansi.toLowerCase().includes(q)) ||
+          (item.komentar && item.komentar.toLowerCase().includes(q));
+        return matchCat && matchText;
+      });
+
+      guestTableBody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      filtered.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition';
+
+        const starsText = '★'.repeat(Number(item.rating) || 0) + '☆'.repeat(Math.max(0, 5 - (Number(item.rating) || 0)));
+
+        tr.innerHTML = `
+          <td class="py-3 px-3 font-semibold text-slate-600">${idx + 1}</td>
+          <td class="py-3 px-3 text-xs text-slate-500 whitespace-nowrap">${escapeHtml(formatTimestamp(item.waktu))}</td>
+          <td class="py-3 px-3">
+            <div class="font-bold text-[#17376E]">${escapeHtml(item.nama)}</div>
+            <span class="inline-block mt-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-[#17376E] border border-blue-200">
+              ${escapeHtml(item.kategori)}
+            </span>
+          </td>
+          <td class="py-3 px-3 text-slate-700 font-medium">${escapeHtml(item.instansi)}</td>
+          <td class="py-3 px-3 whitespace-nowrap">
+            <span class="text-amber-500 font-bold tracking-tight">${starsText}</span>
+            <span class="text-xs text-slate-500 ml-1">(${item.rating}/5)</span>
+          </td>
+          <td class="py-3 px-3 text-slate-600 max-w-[220px]">${escapeHtml(item.komentar || '-')}</td>
+          <td class="py-3 px-3 text-center">
+            ${item.signatureDataUrl
+              ? `<img src="${item.signatureDataUrl}" alt="TTD ${escapeHtml(item.nama)}" class="h-10 w-20 object-contain mx-auto border border-slate-200 rounded bg-white p-0.5" />`
+              : `<span class="text-xs text-slate-400">-</span>`
+            }
+          </td>
+          <td class="py-3 px-3 text-center">
+            <button
+              type="button"
+              onclick="deleteGuest('${item.id}')"
+              title="Hapus entri"
+              class="text-xs font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition cursor-pointer"
+            >
+              Hapus
+            </button>
+          </td>
+        `;
+
+        guestTableBody.appendChild(tr);
+      });
+    }
+
+    window.deleteGuest = function(id) {
+      guests = guests.filter(g => g.id !== id);
+      saveGuests();
+      renderTable();
+    };
+
+    // Submit Form
+    guestForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const nama = namaInput.value.trim();
+      const kategori = kategoriInput.value;
+      const instansi = instansiInput.value.trim();
+      const komentar = komentarInput.value.trim();
+      const rating = Number(ratingValueInput.value) || 5;
+
+      if (!nama || !instansi) {
+        showAlert('Nama lengkap dan NIM / NIP / Instansi wajib diisi.', 'error');
+        return;
+      }
+
+      if (!hasSignature) {
+        showAlert('Silakan bubuhkan tanda tangan digital terlebih dahulu.', 'error');
+        return;
+      }
+
+      const signatureDataUrl = canvas.toDataURL('image/png');
+
+      const newGuest = {
+        id: 'guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        waktu: new Date().toISOString(),
+        nama,
+        kategori,
+        instansi,
+        rating,
+        komentar,
+        signatureDataUrl
+      };
+
+      guests.unshift(newGuest);
+      saveGuests();
+      renderTable();
+
+      guestForm.reset();
+      updateStars(5);
+      clearCanvas();
+      showAlert('Data buku tamu berhasil disimpan!', 'success');
+    });
+
+    // Filter & Reset
+    searchInput.addEventListener('input', renderTable);
+    filterKategori.addEventListener('change', renderTable);
+
+    btnResetAll.addEventListener('click', () => {
+      if (guests.length === 0) return;
+      const ok = confirm('Yakin ingin menghapus seluruh data buku tamu yang tersimpan di browser ini?');
+      if (!ok) return;
+      guests = [];
+      saveGuests();
+      renderTable();
+    });
+
+    // Contoh Data Uji
+    function createSampleSignature(text) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 240;
+      tempCanvas.height = 90;
+      const tctx = tempCanvas.getContext('2d');
+      tctx.fillStyle = '#FFFFFF';
+      tctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tctx.strokeStyle = '#17376E';
+      tctx.lineWidth = 2.5;
+      tctx.beginPath();
+      tctx.moveTo(20, 55);
+      tctx.bezierCurveTo(60, 15, 100, 80, 140, 40);
+      tctx.bezierCurveTo(170, 15, 195, 65, 220, 45);
+      tctx.stroke();
+      return tempCanvas.toDataURL('image/png');
+    }
+
+    btnSeedSample.addEventListener('click', () => {
+      const samples = [
+        {
+          id: 'sample_1_' + Date.now(),
+          waktu: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
+          nama: 'Ir. Wahyu Hidayat, M.S.Pd., M.Pd.',
+          kategori: 'Dosen',
+          instansi: 'Dosen Pengampu / JTIK UNM',
+          rating: 5,
+          komentar: 'Respons relay dan pembacaan ambang batas LDR 900 berjalan stabil saat simulasi terang-gelap.',
+          signatureDataUrl: createSampleSignature('WH')
+        },
+        {
+          id: 'sample_2_' + Date.now(),
+          waktu: new Date(Date.now() - 3600 * 1000).toISOString(),
+          nama: 'Rizky Ramadhan',
+          kategori: 'Mahasiswa',
+          instansi: '240209502011 / PTIKG',
+          rating: 5,
+          komentar: 'Wiring rapi dan penjelasan alur sensor LDR ke relay 220V mudah dipahami.',
+          signatureDataUrl: createSampleSignature('RR')
+        },
+        {
+          id: 'sample_3_' + Date.now(),
+          waktu: new Date().toISOString(),
+          nama: 'Siti Nurhaliza',
+          kategori: 'Umum / Tamu',
+          instansi: 'Pengunjung Pameran Booth',
+          rating: 4,
+          komentar: 'Sangat bermanfaat untuk penghematan energi lampu ruangan otomatis.',
+          signatureDataUrl: createSampleSignature('SN')
+        }
+      ];
+
+      guests = [...samples, ...guests];
+      saveGuests();
+      renderTable();
+      showAlert('Contoh data pengunjung berhasil ditambahkan.', 'success');
+    });
+
+    // Export PDF Langsung menggunakan jsPDF + autoTable
+    btnDownloadPdf.addEventListener('click', () => {
+      if (guests.length === 0) {
+        alert('Belum ada data pengunjung untuk di-export ke PDF.');
+        return;
+      }
+
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('Pustaka jsPDF belum termuat. Pastikan koneksi internet aktif lalu muat ulang halaman.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const totalGuests = guests.length;
+      const avgRating = (
+        guests.reduce((acc, item) => acc + (Number(item.rating) || 0), 0) / totalGuests
+      ).toFixed(2);
+
+      // Banner Kop Laporan
+      doc.setFillColor(23, 55, 110); // #17376E
+      doc.rect(0, 0, pageWidth, 28, 'F');
+
+      doc.setFillColor(244, 180, 26); // #F4B41A
+      doc.rect(0, 28, pageWidth, 2, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('LAPORAN BUKU TAMU BOOTH PAMERAN — JTIK', 14, 12);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.text('Proyek Sistem Teknik Kendali Digital: Kendali Cahaya Otomatis Berbasis LDR (Threshold 900)', 14, 19);
+      doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 24.5);
+
+      // Ringkasan Statistik di PDF
+      doc.setTextColor(30, 41, 59);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(
+        `Total Pengunjung: ${totalGuests} orang    |    Rata-Rata Rating: ${avgRating} / 5.00    |    Sistem: Arduino Uno R3 + LDR (A0) + Relay (Pin 13) + Lampu 220V`,
+        14,
+        37
+      );
+
+      // Siapkan baris tabel untuk autoTable
+      const rows = guests.map((item, index) => [
+        String(index + 1),
+        formatTimestamp(item.waktu),
+        `${item.nama}\n(${item.kategori})`,
+        item.instansi,
+        `${item.rating} / 5`,
+        item.komentar || '-',
+        '' // Kolom tanda tangan digambar di didDrawCell
+      ]);
+
+      doc.autoTable({
+        startY: 41,
+        head: [['No', 'Waktu Kunjungan', 'Nama & Kategori', 'NIM / NIP / Instansi', 'Rating', 'Kesan / Saran', 'Tanda Tangan']],
+        body: rows,
+        theme: 'grid',
+        styles: {
+          font: 'helvetica',
+          fontSize: 8.5,
+          cellPadding: 2.5,
+          valign: 'middle',
+          textColor: [30, 41, 59],
+          lineColor: [203, 213, 225],
+          lineWidth: 0.2
+        },
+        headStyles: {
+          fillColor: [23, 55, 110],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 34 },
+          2: { cellWidth: 52 },
+          3: { cellWidth: 46 },
+          4: { cellWidth: 18, halign: 'center' },
+          5: { cellWidth: 59 },
+          6: { cellWidth: 30, halign: 'center', minCellHeight: 16 }
+        },
+        didDrawCell: function (data) {
+          if (data.section === 'body' && data.column.index === 6) {
+            const guestItem = guests[data.row.index];
+            if (guestItem && guestItem.signatureDataUrl) {
+              try {
+                const imgW = 24;
+                const imgH = 12;
+                const xPos = data.cell.x + (data.cell.width - imgW) / 2;
+                const yPos = data.cell.y + (data.cell.height - imgH) / 2;
+                doc.addImage(guestItem.signatureDataUrl, 'PNG', xPos, yPos, imgW, imgH);
+              } catch (err) {
+                // Abaikan jika gagal merender gambar TTD tertentu
+              }
+            }
+          }
+        }
+      });
+
+      doc.save('Buku_Tamu_Booth_LDR_JTIK.pdf');
+    });
+
+    // Inisialisasi
+    setupCanvas();
+    updateStars(5);
+    loadGuests();
+    renderTable();
+  </script>
+</body>
+</html>
